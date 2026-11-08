@@ -13,8 +13,8 @@ The lab demonstrates a functioning SIEM environment capable of collecting and se
 | Component | Operating System | Hostname | IP Address | Role |
 |---|---|---|---|---|
 | Splunk Server | Windows Server | Splunk Server | `192.168.56.104` | Central SIEM |
-| Windows VM 1 | Windows | `WIN-SVR-ACTIVE` | `192.168.56.105`* | Windows event collection |
-| Windows VM 2 | Windows | `personaluse` | `192.168.56.102`* | Windows event collection |
+| Windows VM 1 | Windows | `WIN-SVR-ACTIVE` | `192.168.56.102` | Windows event collection |
+| Windows VM 2 | Windows | `personaluse` | `192.168.56.105` | Windows event collection |
 | Kali Linux | Kali Linux | `kali` | `192.168.56.103` | Linux log collection |
 
 *Verify the Windows VM IP-to-hostname assignments before publishing this inventory. The Windows endpoint IPs were previously reported separately, so they should not be swapped based solely on their order in this table.*
