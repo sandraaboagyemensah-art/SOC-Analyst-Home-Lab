@@ -1,95 +1,70 @@
-# Windows Failed Login Detection — Event ID 4625
+# Windows Failed Login Detection – Splunk
 
-## Project Overview
+## 1. Project Overview
 
-This project demonstrates the detection and investigation of failed Windows authentication attempts using **Splunk Enterprise 10.6.1.1**.
+This project demonstrates how to monitor Windows authentication activity using Splunk Enterprise, identify failed login attempts, investigate Windows Security Event ID **4625**, and configure a detection alert for repeated failed login attempts.
 
-The objective was to generate a controlled failed-login event on a Windows endpoint, verify that Windows recorded the event, confirm that Splunk successfully received it through the Universal Forwarder, and investigate the event using Search Processing Language (SPL).
+The objective was to demonstrate foundational Security Operations Center (SOC) skills, including Windows event log analysis, security monitoring, SPL queries, threshold-based detection, and alert configuration.
 
-This exercise demonstrates foundational Security Operations Center (SOC) analyst skills, including Windows event auditing, SIEM log analysis, event filtering, and authentication investigation.
+## 2. Lab Environment
 
-## Lab Environment
-
-| Component | Configuration |
+| Component | Description |
 |---|---|
-| SIEM platform | Splunk Enterprise 10.6.1.1 |
-| Endpoint operating system | Windows |
-| Log collection | Splunk Universal Forwarder |
-| Windows log source | Security Event Log |
-| Event ID | 4625 |
-| Detection method | SPL search |
-| Analysis period | Last 24 hours |
+| SIEM | Splunk Enterprise |
+| Log Source | Windows Security Event Log |
+| Event ID | 4625 – Failed Logon |
+| Log Sourcetype | `WinEventLog:Security` |
+| Detection Platform | Splunk Search & Reporting |
+| Detection Window | 5 minutes |
+| Alert Threshold | 5 or more failed login attempts |
 
-## Detection Objective
+## 3. Windows Audit Policy
 
-Identify failed Windows login attempts by monitoring Security Event ID **4625**.
-
-Event ID 4625 is generated when a logon request fails. It can help analysts investigate:
-
-- Incorrect password attempts.
-- Attempts to access unauthorized accounts.
-- Repeated authentication failures.
-- Potential password-guessing or brute-force activity.
-
-A single failed login does not establish malicious activity. Analysts should investigate the account, source, frequency, timing, and surrounding events before determining whether an incident has occurred.
-
-## Windows Event Generation and Verification
-
-A controlled incorrect-password attempt was performed on the Windows endpoint.
-
-The Windows audit policy was verified using:
+Windows auditing was verified using:
 
 ```cmd
 auditpol /get /subcategory:"Logon"
 ```
 
-The result confirmed:
+The resulting configuration confirmed:
 
 ```text
 Logon    Success and Failure
 ```
 
-The Security event was then retrieved using PowerShell:
+This enabled Windows to record both successful and unsuccessful logon attempts.
 
-```powershell
-Get-WinEvent -FilterHashtable @{
-    LogName = 'Security'
-    Id = 4625
-    StartTime = (Get-Date).AddHours(-24)
-} -MaxEvents 10 |
-Format-List TimeCreated, Id, ProviderName, Message
-```
+## 4. Detection Screenshots
 
-### Verified Event Details
+The following screenshots document the detection workflow.
 
-| Field | Observed value |
-|---|---|
-| Event ID | 4625 |
-| Provider | Microsoft-Windows-Security-Auditing |
-| Logon Type | 2 — Interactive |
-| Failure reason | Unknown username or bad password |
-| Status | `0xC000006D` |
-| Substatus | `0xC000006A` — Incorrect password |
-| Workstation | PERSONALUSE |
-| Source address | `127.0.0.1` |
+### Screenshot 1 – Basic Failed Login Search
 
-The event indicates a failed interactive logon involving an incorrect password. The loopback address identifies the local computer, not an external attacker.
+**Filename:** `windows-failed-logon-event-4625.png`
 
-## Splunk Log Ingestion Verification
+Demonstrates the identification of failed Windows authentication events using Event ID 4625.
 
-The Windows Security event was successfully forwarded to Splunk and located using Search & Reporting.
-
-### Primary Detection Search
+**SPL Query:**
 
 ```spl
 index=* earliest=-24h EventCode=4625 LogName=Security
 | table _time host sourcetype EventCode LogName Account_Name TargetUserName IpAddress
-| sort - _time
+| sort -_time
 ```
 
-This search filters for Event ID 4625 specifically within the Windows Security log.
+**Purpose:**
+- Identify failed Windows logins.
+- Review timestamps and affected hosts.
+- Examine account and IP address information.
+- Investigate authentication failures.
 
-### Detection Summary Search
+### Screenshot 2 – Failed Login Summary
+
+**Filename:** `windows-failed-logon-detection-summary.png`
+
+Demonstrates how Splunk aggregates failed login events by host and sourcetype.
+
+**SPL Query:**
 
 ```spl
 index=* earliest=-24h EventCode=4625 LogName=Security
@@ -97,57 +72,133 @@ index=* earliest=-24h EventCode=4625 LogName=Security
 | sort - failed_logins
 ```
 
-The summary search returned **one verified failed-login event** in the 24-hour search window.
+**Purpose:**
+- Count failed authentication events.
+- Summarize activity by host.
+- Identify systems generating failed login events.
 
-## Event Classification and Investigation
+### Screenshot 3 – Threshold Validation
 
-During investigation, an additional result appeared under the Application sourcetype with EventCode 4625.
+**Filename:** `windows-failed-logon-threshold-validation.png`
 
-Inspection of its raw event data showed:
+Demonstrates how failed login events can be grouped into five-minute intervals and evaluated against a detection threshold.
 
-- Log name: Application
-- Source: Microsoft-Windows-EventSystem
-- Event type: Information
-- Message: Windows EventSystem was suppressing duplicate event log entries for 86,400 seconds.
+**SPL Query:**
 
-This was not a second failed authentication event.
+```spl
+index=* earliest=-24h sourcetype=WinEventLog:Security EventCode=4625 LogName=Security
+| bin _time span=5m
+| stats count AS failed_attempts by _time host
+| where failed_attempts >= 1
+| sort - _time
+```
 
-The investigation demonstrated why analysts should validate the original event source and message instead of relying exclusively on an event-code match.
+**Purpose:**
+- Group failed login attempts into five-minute windows.
+- Count failed attempts by host.
+- Validate that the threshold-based detection logic works.
 
-## Screenshots and Evidence
+### Screenshot 4 – Repeated Failed Login Detection
 
-The following screenshots document the investigation:
+**Filename:** `windows-repeated-failed-login-detection.png`
 
-| Screenshot | Evidence |
+Demonstrates detection logic for repeated failed login attempts.
+
+**SPL Query:**
+
+```spl
+index=* earliest=-24h sourcetype=WinEventLog:Security EventCode=4625 LogName=Security
+| bin _time span=5m
+| stats count AS failed_attempts by _time host
+| where failed_attempts >= 5
+| sort - _time
+```
+
+**Purpose:**
+- Identify hosts with five or more failed login attempts within a five-minute period.
+- Demonstrate threshold-based security monitoring.
+- Establish a foundation for detecting potential brute-force activity.
+
+A search returning no results indicates that the configured threshold was not met during the selected time range. This is a valid detection outcome.
+
+### Screenshot 5 – Scheduled Failed Login Alert
+
+**Filename:** `windows-repeated-failed-login-alert.png`
+
+Demonstrates the configuration of a scheduled Splunk alert for repeated Windows authentication failures.
+
+**SPL Query:**
+
+```spl
+index=* earliest=-5m latest=now sourcetype=WinEventLog:Security EventCode=4625 LogName=Security
+| stats count AS failed_attempts by host
+| where failed_attempts >= 5
+| sort - failed_attempts
+```
+
+**Alert Configuration:**
+
+| Setting | Configuration |
 |---|---|
-| `windows-failed-logon-event-4625.png` | Windows failed-login event details |
-| `windows-failed-logon-detection-summary.png` | Splunk detection summary showing the verified event |
+| Alert Name | Windows Repeated Failed Logins |
+| Alert Type | Scheduled |
+| Schedule | Every 1 minute |
+| Time Range | Last 5 minutes |
+| Trigger Condition | Number of Results greater than 0 |
+| Trigger | Once per search |
 
-## Skills Demonstrated
+**Purpose:**
+- Automate monitoring for repeated failed logins.
+- Identify hosts exceeding the configured threshold.
+- Demonstrate basic security alert configuration in Splunk.
 
-- Windows Security auditing and Event Viewer investigation.
-- Event ID 4625 identification and interpretation.
-- Splunk Universal Forwarder log ingestion verification.
-- SPL search construction and filtering.
-- Event classification and false-positive investigation.
-- Authentication failure analysis.
-- Technical documentation and evidence collection.
+The alert is configured to detect qualifying events. Email notifications or other notification actions require separate configuration.
 
-## Project Status and Next Steps
+## 5. Event Investigation
 
-**Completed:** Controlled failed-login event generation, Windows event verification, Splunk ingestion verification, SPL filtering, and detection summary.
+A failed authentication event was successfully identified and investigated.
 
-**Planned enhancements:**
+| Field | Observed Value |
+|---|---|
+| Event ID | 4625 |
+| Target Account | sandra |
+| Workstation | PERSONALUSE |
+| Logon Type | 2 – Interactive |
+| Failure Reason | Unknown username or bad password |
+| Status | `0xC000006D` |
+| Substatus | `0xC000006A` |
+| Source IP | `127.0.0.1` |
 
-1. Develop a threshold-based detection for repeated failed logins.
-2. Configure a Splunk alert for suspicious authentication activity.
-3. Investigate successful logins following repeated failures.
-4. Build a dashboard for Windows authentication monitoring.
+The substatus indicated an incorrect password. The source address was the local loopback address, so this particular event should not be interpreted as evidence of an external attacker.
 
-## Conclusion
+## 6. Skills Demonstrated
 
-This project demonstrates an end-to-end Windows authentication monitoring workflow using Splunk Enterprise.
+- Windows Security Event Log monitoring.
+- Windows audit policy verification.
+- Splunk Enterprise configuration and log analysis.
+- Security Information and Event Management (SIEM).
+- Search Processing Language (SPL).
+- Failed authentication investigation.
+- Event aggregation and threshold-based detection.
+- Scheduled alert configuration.
+- Basic security event triage.
+- Security documentation and GitHub portfolio development.
 
-It shows how a SOC analyst can generate a security event, validate its origin, confirm SIEM ingestion, write targeted SPL searches, and distinguish genuine authentication failures from unrelated system messages.
+## 7. Future Improvements
 
-The lab provides a foundation for developing more advanced detection and incident investigation capabilities.
+Potential enhancements include:
+
+- Monitoring failed logins across multiple Windows endpoints.
+- Investigating successful logins following repeated failures.
+- Adding account-level and source-IP-level detection.
+- Developing additional authentication anomaly detections.
+- Improving alert suppression and notification settings.
+- Building dashboards to visualize authentication activity.
+
+## 8. Conclusion
+
+This project demonstrates a practical Windows authentication monitoring workflow using Splunk Enterprise.
+
+The lab successfully collected and analyzed Windows failed-login events, implemented SPL-based detection logic, evaluated repeated authentication failures against a threshold, and configured a scheduled alert.
+
+These exercises demonstrate foundational SOC Analyst capabilities in security monitoring, event investigation, detection engineering, and alert management.
