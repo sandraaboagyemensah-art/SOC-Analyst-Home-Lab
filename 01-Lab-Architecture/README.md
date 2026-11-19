@@ -222,16 +222,49 @@ This project demonstrates practical experience with:
 
 ## 11. Project Outcome
 
-The initial SOC home lab architecture was established using four virtual machines.
+The initial SOC home lab architecture was established using four virtual machines running within Oracle VirtualBox.
 
-The Splunk server was prepared as the centralized log collection destination, and Universal Forwarders were installed and verified as running on all three endpoint machines.
+The Splunk server was configured as the centralized log collection and analysis destination. Splunk Universal Forwarders were installed on all three endpoint machines, and their services were verified as running.
 
-This project established the infrastructure needed for the next stages of the SOC portfolio:
+This established the infrastructure needed for centralized security monitoring and subsequent SOC investigation projects.
 
-- **Project 02:** Splunk Enterprise Configuration and Windows Security Monitoring.
-- **Project 03:** Linux Security Monitoring.
-- **Project 04:** Windows and Linux Security Event Correlation.
+### Subsequent Project Achievements
 
+The lab infrastructure was subsequently used to support the following projects:
+
+**Project 02: Splunk Enterprise Configuration and Windows Security Monitoring**
+
+Focused on configuring Splunk Enterprise and developing the foundation for Windows security event monitoring.
+
+**Project 03: Linux Security Monitoring**
+
+Focused on collecting and investigating Linux security events, including authentication activity.
+
+**Project 04: Windows and Linux Security Event Correlation**
+
+Used Splunk Enterprise to investigate and correlate Windows Security and Kali Linux authentication events.
+
+Verified Project 04 findings included:
+
+- Five failed-authentication events identified across Windows and Linux.
+- Four Linux authentication failures and one Windows failed-logon event.
+- Windows Security Event ID `4625` used to identify failed Windows logons.
+- Linux authentication failures identified using the `linux:auth` sourcetype.
+- Two rapid authentication attempts identified using a 60-second timing threshold.
+- An overall rapid-attempt percentage of 40.00%.
+- Cross-platform event classification using Splunk Search Processing Language (SPL).
+
+The investigation demonstrated practical use of Splunk to search, correlate, classify, and analyze authentication activity across different operating systems.
+
+The 60-second threshold was used as an investigation and triage guideline, not as standalone proof of malicious activity.
+
+### Overall Outcome
+
+Project 01 established the virtual infrastructure that supported the development of a multi-platform SOC analyst home lab.
+
+The subsequent projects demonstrated how this infrastructure could be used for centralized log analysis, Windows and Linux security monitoring, and cross-platform authentication investigations.
+
+Together, these projects provide a practical foundation for further SOC analyst training, detection engineering, security event correlation, and incident investigation.
 ## 12. Future Improvements
 
 Potential improvements to the lab include:
